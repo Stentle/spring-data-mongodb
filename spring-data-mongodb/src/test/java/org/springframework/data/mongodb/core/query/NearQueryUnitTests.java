@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2014 the original author or authors.
+ * Copyright 2011-2015 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package org.springframework.data.mongodb.core.query;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
+import static org.springframework.data.mongodb.test.util.IsBsonObject.*;
 
 import org.junit.Test;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +27,7 @@ import org.springframework.data.geo.Metric;
 import org.springframework.data.geo.Metrics;
 import org.springframework.data.geo.Point;
 import org.springframework.data.mongodb.core.DBObjectTestUtils;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 
 /**
  * Unit tests for {@link NearQuery}.
@@ -157,5 +159,44 @@ public class NearQueryUnitTests {
 		query.query(Query.query(Criteria.where("foo").is("bar")));
 
 		assertThat(DBObjectTestUtils.getTypedValue(query.toDBObject(), "num", Integer.class), is(num));
+	}
+
+	/**
+	 * @see DATAMONGO-1348
+	 */
+	@Test
+	public void shouldUseMetersForGeoJsonData() {
+
+		NearQuery query = NearQuery.near(new GeoJsonPoint(27.987901, 86.9165379));
+		query.maxDistance(1);
+
+		assertThat(query.toDBObject(), isBsonObject().containing("maxDistance", Metrics.KILOMETERS.getMultiplier() * 1000)
+				.containing("distanceMultiplier", Metrics.KILOMETERS.getMultiplier() / 1000));
+	}
+
+	/**
+	 * @see DATAMONGO-1348
+	 */
+	@Test
+	public void shouldUseMetersForGeoJsonDataWhenDistanceInKilometers() {
+
+		NearQuery query = NearQuery.near(new GeoJsonPoint(27.987901, 86.9165379));
+		query.maxDistance(new Distance(1, Metrics.KILOMETERS));
+
+		assertThat(query.toDBObject(),
+				isBsonObject().containing("maxDistance", 1000D).containing("distanceMultiplier", 0.001D));
+	}
+
+	/**
+	 * @see DATAMONGO-1348
+	 */
+	@Test
+	public void shouldUseMetersForGeoJsonDataWhenDistanceInMiles() {
+
+		NearQuery query = NearQuery.near(new GeoJsonPoint(27.987901, 86.9165379));
+		query.maxDistance(new Distance(1, Metrics.MILES));
+
+		assertThat(query.toDBObject(),
+				isBsonObject().containing("maxDistance", 1609.34383D).containing("distanceMultiplier", 0.00160934383D));
 	}
 }

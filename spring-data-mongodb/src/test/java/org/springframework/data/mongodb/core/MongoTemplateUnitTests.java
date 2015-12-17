@@ -50,13 +50,16 @@ import org.springframework.data.mongodb.core.convert.CustomConversions;
 import org.springframework.data.mongodb.core.convert.DefaultDbRefResolver;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.convert.QueryMapper;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 import org.springframework.data.mongodb.core.index.MongoPersistentEntityIndexCreator;
+import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
 import org.springframework.data.mongodb.core.query.BasicQuery;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.NearQuery;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.data.mongodb.test.util.IsBsonObject;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.mongodb.BasicDBObject;
@@ -104,7 +107,11 @@ public class MongoTemplateUnitTests extends MongoOperationsUnitTests {
 		when(cursor.hint(anyString())).thenReturn(cursor);
 
 		this.mappingContext = new MongoMappingContext();
+		mappingContext.afterPropertiesSet();
+
 		this.converter = new MappingMongoConverter(new DefaultDbRefResolver(factory), mappingContext);
+		converter.afterPropertiesSet();
+
 		this.template = new MongoTemplate(factory, converter);
 	}
 
@@ -420,6 +427,56 @@ public class MongoTemplateUnitTests extends MongoOperationsUnitTests {
 		template.geoNear(query, Wrapper.class);
 
 		verify(this.db, times(1)).command(Mockito.any(DBObject.class));
+	}
+
+	/**
+	 * @see DATAMONGO-1348
+	 */
+	@Test
+	public void geoNearShouldMapQueryCorrectly() {
+
+		when(db.command(Mockito.any(DBObject.class))).thenReturn(mock(CommandResult.class));
+
+		NearQuery query = NearQuery.near(new Point(1, 1));
+		query.query(Query.query(Criteria.where("customName").is("rand al'thor")));
+
+		template.geoNear(query, WithNamedFields.class);
+
+		ArgumentCaptor<DBObject> capture = ArgumentCaptor.forClass(DBObject.class);
+		verify(this.db, times(1)).command(capture.capture());
+
+		assertThat(capture.getValue(), IsBsonObject.isBsonObject().containing("query.custom-named-field", "rand al'thor")
+				.notContaining("query.customName"));
+	}
+
+	/**
+	 * @see DATAMONGO-1348
+	 */
+	@Test
+	public void geoNearShouldMapGeoJsonPointCorrectly() {
+
+		when(db.command(Mockito.any(DBObject.class))).thenReturn(mock(CommandResult.class));
+
+		NearQuery query = NearQuery.near(new GeoJsonPoint(1, 2));
+		query.query(Query.query(Criteria.where("customName").is("rand al'thor")));
+
+		template.geoNear(query, WithNamedFields.class);
+
+		ArgumentCaptor<DBObject> capture = ArgumentCaptor.forClass(DBObject.class);
+		verify(this.db, times(1)).command(capture.capture());
+
+		assertThat(
+				capture.getValue(),
+				IsBsonObject.isBsonObject().containing("near.type", "Point").containing("near.coordinates.[0]", 1D)
+						.containing("near.coordinates.[1]", 2D));
+	}
+
+	static class WithNamedFields {
+
+		@Id String id;
+
+		String name;
+		@Field("custom-named-field") String customName;
 	}
 
 	class AutogenerateableId {

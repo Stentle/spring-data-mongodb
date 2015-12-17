@@ -655,7 +655,15 @@ public class MongoTemplate implements MongoOperations, ApplicationContextAware {
 
 		String collection = StringUtils.hasText(collectionName) ? collectionName : determineCollectionName(entityClass);
 		BasicDBObject command = new BasicDBObject("geoNear", collection);
-		command.putAll(near.toDBObject());
+
+		DBObject dbo = near.toDBObject();
+		DBObject query = dbo.containsField("query") ? (DBObject) dbo.removeField("query") : new BasicDBObject();
+
+		command.putAll(queryMapper.getMappedObject(dbo, null));
+
+		if (!query.keySet().isEmpty()) {
+			command.put("query", queryMapper.getMappedObject(query, mappingContext.getPersistentEntity(entityClass)));
+		}
 
 		CommandResult commandResult = executeCommand(command, this.readPreference);
 		List<Object> results = (List<Object>) commandResult.get("results");

@@ -107,6 +107,20 @@ public class GeoJsonTests {
 	 * @see DATAMONGO-1135
 	 */
 	@Test
+	public void geoNearWithMiles() {
+
+		NearQuery geoNear = NearQuery.near(new GeoJsonPoint(-73, 40), Metrics.MILES).num(10).maxDistance(93.2057);
+
+		GeoResults<Venue2DSphere> result = template.geoNear(geoNear, Venue2DSphere.class);
+
+		assertThat(result.getContent().size(), is(not(0)));
+		assertThat(result.getAverageDistance().getMetric(), is((Metric) Metrics.MILES));
+	}
+
+	/**
+	 * @see DATAMONGO-1135
+	 */
+	@Test
 	public void withinPolygon() {
 
 		Point first = new Point(-73.99756, 40.73083);
