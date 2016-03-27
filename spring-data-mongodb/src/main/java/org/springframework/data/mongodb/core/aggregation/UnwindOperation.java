@@ -26,33 +26,60 @@ import com.mongodb.DBObject;
  * <p>
  * We recommend to use the static factory method {@link Aggregation#unwind(String)} instead of creating instances of
  * this class directly.
- * 
- * @see http://docs.mongodb.org/manual/reference/aggregation/unwind/#pipe._S_unwind
+ *
  * @author Thomas Darimont
  * @author Oliver Gierke
+ * @author Alessio Fachechi
+ * @see http://docs.mongodb.org/manual/reference/aggregation/unwind/#pipe._S_unwind
  * @since 1.3
  */
 public class UnwindOperation implements AggregationOperation {
 
 	private final ExposedField field;
+	private ExposedField includeArrayIndex;
+	private boolean preserveNullAndEmptyArrays = false;
 
 	/**
 	 * Creates a new {@link UnwindOperation} for the given {@link Field}.
-	 * 
+	 *
 	 * @param field must not be {@literal null}.
 	 */
 	public UnwindOperation(Field field) {
 
 		Assert.notNull(field);
+
 		this.field = new ExposedField(field, true);
 	}
 
-	/* 
+	// TODO javadoc
+	public UnwindOperation(Field field,boolean preserveNullAndEmptyArrays) {
+
+		this(field);
+		this.preserveNullAndEmptyArrays = preserveNullAndEmptyArrays;
+	}
+
+	// TODO javadoc
+	public UnwindOperation(Field field, Field includeArrayIndex, boolean preserveNullAndEmptyArrays) {
+
+		this(field);
+		this.includeArrayIndex = new ExposedField(includeArrayIndex, true);
+		this.preserveNullAndEmptyArrays = preserveNullAndEmptyArrays;
+	}
+
+	/*
 	 * (non-Javadoc)
 	 * @see org.springframework.data.mongodb.core.aggregation.AggregationOperation#toDBObject(org.springframework.data.mongodb.core.aggregation.AggregationOperationContext)
 	 */
 	@Override
 	public DBObject toDBObject(AggregationOperationContext context) {
-		return new BasicDBObject("$unwind", context.getReference(field).toString());
+		BasicDBObject unwindObject = new BasicDBObject();
+
+		unwindObject.append("path", context.getReference(field).toString());
+		if (includeArrayIndex != null) {
+			unwindObject.append("includeArrayIndex", includeArrayIndex.getTarget());
+		}
+		unwindObject.append("preserveNullAndEmptyArrays", preserveNullAndEmptyArrays);
+
+		return new BasicDBObject("$unwind", unwindObject);
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2015 the original author or authors.
+ * Copyright 2013-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,11 +15,14 @@
  */
 package org.springframework.data.mongodb.core.aggregation;
 
-import static org.springframework.data.mongodb.core.aggregation.Fields.*;
+import static org.springframework.data.mongodb.core.aggregation.Fields.field;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Sort.Direction;
@@ -31,9 +34,6 @@ import org.springframework.data.mongodb.core.query.NearQuery;
 import org.springframework.data.mongodb.core.query.SerializationUtils;
 import org.springframework.util.Assert;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
-
 /**
  * An {@code Aggregation} is a representation of a list of aggregation steps to be performed by the MongoDB Aggregation
  * Framework.
@@ -41,6 +41,7 @@ import com.mongodb.DBObject;
  * @author Tobias Trelle
  * @author Thomas Darimont
  * @author Oliver Gierke
+ * @author Mark Paluch
  * @author Alessio Fachechi
  * @since 1.3
  */
@@ -198,6 +199,16 @@ public class Aggregation {
 	 */
 	public static UnwindOperation unwind(String field) {
 		return new UnwindOperation(field(field));
+	}
+
+	// TODO javadoc
+	public static UnwindOperation unwind(String path, boolean preserveNullAndEmptyArrays) {
+		return new UnwindOperation(field(path), preserveNullAndEmptyArrays);
+	}
+
+	// TODO javadoc
+	public static UnwindOperation unwind(String path, String includeArrayIndex, boolean preserveNullAndEmptyArrays) {
+		return new UnwindOperation(field(path), field(includeArrayIndex), preserveNullAndEmptyArrays);
 	}
 
 	/**
